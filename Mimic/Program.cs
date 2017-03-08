@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Reflection;
+using System.Collections;
 
 namespace Mimic
 {
@@ -29,8 +30,7 @@ namespace Mimic
             DeleteRegistryVal(config);
             CreateMutex(config);
             CreateService(config);
-            CreateProc(config);
-          
+            CreateProcWCmdline(config);
             Console.WriteLine("\nPress ENTER to exit.");
             Console.ReadLine();
 
@@ -77,11 +77,12 @@ namespace Mimic
                 Console.WriteLine("======= Create Service =======");
                 for (int i = 0; i < ServiceDispName.Length; i++)
                 {
+                    string path = changeToken(ServicePath[i]);
                     try
                     {
                         if (!ServiceInstaller.ServiceIsInstalled(ServiceName[i]))
                         {
-                            ServiceInstaller.InstallAndStart(ServiceName[i], ServiceDispName[i], ServicePath[i], false);
+                            ServiceInstaller.InstallAndStart(ServiceName[i], ServiceDispName[i], path, false);
                             Console.WriteLine("[+] Service Installed.");
                         }
                         else
@@ -97,22 +98,21 @@ namespace Mimic
             }
          
         }
-        private static void CreateProc(IniFile config)
+        private static void CreateProcWCmdline(IniFile config)
         {
-            bool CreateProc = GetConfigVal("Process", "CreateProc", config);
-            string[] ProcName = config.IniReadValue("Process", "CrProcName").Split(';'),
-                    ProcArgs = config.IniReadValue("Process", "CrProcArgs").Split(';'),
-                    ProcWindowStyle = config.IniReadValue("Process", "CrWindowStyle").Split(';');
+            bool CreateProc = GetConfigVal("API", "CreateProcwithCMDLine", config);
+            string[] ProcArgs = config.IniReadValue("API", "CrProcArgs").Split(';'),
+                    ProcWindowStyle = config.IniReadValue("API", "CrWindowStyle").Split(';');
 
             //Console.WriteLine(ProcArgs[0]);
-            if(CreateProc && ProcName.Length == ProcArgs.Length)
+            if (CreateProc && ProcWindowStyle.Length == ProcArgs.Length)
             {
                 Console.WriteLine("======= Create Process with CommandLine =======");
                 try
                 {
-                    for (int i = 0; i < ProcName.Length; i++)
+                    for (int i = 0; i < ProcWindowStyle.Length; i++)
                     {
-                        ProcessStartInfo procInfo = new ProcessStartInfo(ProcName[i], ProcArgs[i]);
+                        ProcessStartInfo procInfo = new ProcessStartInfo("cmd.exe", ProcArgs[i]);
                         try
                         {
                             procInfo.WindowStyle = WindowStyle(ProcWindowStyle[i]);
@@ -142,13 +142,14 @@ namespace Mimic
                 Console.WriteLine("======= Delete File =======");
                 for (int i = 0; i < fileName.Length; i++) 
                 {
+                    string pathFile = changeToken(fileName[i]);
                     try
                     {
-                        if (File.Exists(fileName[i]))
+                        if (File.Exists(pathFile))
                         {
-                            File.Delete(fileName[i]);
+                            File.Delete(pathFile);
                             //File.Encrypt(fileName[i]);
-                            Console.WriteLine("[+] Successfully deleted " + fileName[i] + ".");
+                            Console.WriteLine("[+] Successfully deleted " + pathFile + ".");
                         }
                         else
                             Console.WriteLine("[-] Error: File does not exist.");
@@ -172,13 +173,16 @@ namespace Mimic
                 Console.WriteLine("======= Rename File =======");
                 for (int i = 0; i < OrigFileName.Length; i++)
                 {
-                    if (File.Exists(OrigFileName[i]))
+                    string srcPathFileName = changeToken(OrigFileName[i]),
+                        destPathFileName = changeToken(NewFileName[i]);
+
+                    if (File.Exists(srcPathFileName))
                     {
-                        File.Move(OrigFileName[i], NewFileName[i]);
-                        Console.WriteLine("[+] " + OrigFileName[i] + " renamed to " + NewFileName[i] + "!");
+                        File.Move(srcPathFileName, destPathFileName);
+                        Console.WriteLine("[+] " + srcPathFileName + " renamed to " + destPathFileName + "!");
                     }
                     else
-                        Console.Write("[-] Error: " + OrigFileName[i] + " does not exist.\n");
+                        Console.Write("[-] Error: " + srcPathFileName + " does not exist.\n");
                 }
             }
         }
@@ -193,11 +197,12 @@ namespace Mimic
                 Console.WriteLine("======= Write To File =======");
                 for (int i = 0; i < fileName.Length; i++)
                 {
+                    string pathFileName = changeToken(fileName[i]);
                     //FileStream file = File.Open(fileName[i], FileMode.Open, FileAccess.ReadWrite);
                     //Console.WriteLine(file.Read();
                     try
                     {
-                        using (var file = new FileStream(fileName[i], FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
+                        using (var file = new FileStream(pathFileName, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
                         {
                             //Console.WriteLine(fileName[i]);
                             //Console.WriteLine(offset);
@@ -205,7 +210,7 @@ namespace Mimic
                             file.Write(buff, 0, buff.Length);
                             file.Close();
                         }
-                        Console.WriteLine("[+] Successfully written " + fileName[i] + "!");
+                        Console.WriteLine("[+] Successfully written " + pathFileName + "!");
                     }
                     catch (UnauthorizedAccessException)
                     {
@@ -213,7 +218,7 @@ namespace Mimic
                     }
                     catch (FileNotFoundException)
                     {
-                        Console.WriteLine("[-] Error: "+ fileName[i] +" not found.");
+                        Console.WriteLine("[-] Error: " + pathFileName + " not found.");
                     }
                     catch (IOException)
                     {
@@ -223,8 +228,19 @@ namespace Mimic
             }
         }
         private static void CreateFile(IniFile config)
-        {        
-            string exeTest = File.ReadAllText("Class1.cs");
+        {
+            string exeTest = @"namespace DLL
+            {
+                using System;
+
+                public class Class1
+                {
+                    public void Output(string s)
+                    {
+                        Console.WriteLine(s);
+                    }
+                }
+            }";
             bool CreateFile = GetConfigVal("File", "isCreateFile", config);
             string[] fileName = config.IniReadValue("File", "CrFileName").Split(';'),
                      WinStyle = config.IniReadValue("File", "CrFileWindowStyle").Split(';'),
@@ -235,60 +251,76 @@ namespace Mimic
                 Console.WriteLine("======= Create File =======");
                 for (int i = 0; i < fileName.Length; i++)
                 {
-                    CodeDomProvider codeProvider = CodeDomProvider.CreateProvider("CSharp");
-
-                    System.CodeDom.Compiler.CompilerParameters p = new CompilerParameters();
-                    p.GenerateExecutable = true;
-                    p.OutputAssembly = fileName[i];
-                    p.CompilerOptions = "/t:" + fileType[i];
-
-                    CompilerResults results = codeProvider.CompileAssemblyFromSource(p, exeTest);
-                    if (results.Errors.Count > 0)
+                    string filePathName = changeToken(fileName[i]);
+                    if ("library" == fileType[i] || "exe" == fileType[i] || "winexe" == fileType[i])
                     {
-                        foreach (CompilerError CompErr in results.Errors)
+                        CodeDomProvider codeProvider = CodeDomProvider.CreateProvider("CSharp");
+
+                        System.CodeDom.Compiler.CompilerParameters p = new CompilerParameters();
+                        p.GenerateExecutable = true;
+                        p.OutputAssembly = filePathName;
+                        p.CompilerOptions = "/t:" + fileType[i];
+
+                        CompilerResults results = codeProvider.CompileAssemblyFromSource(p, exeTest);
+                        if (results.Errors.Count > 0)
                         {
-                            Console.WriteLine(CompErr.ErrorText);
-                            break;
+                            foreach (CompilerError CompErr in results.Errors)
+                            {
+                                Console.WriteLine(CompErr.ErrorText);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("[+] " + filePathName + " created successfully!");
+                        }
+
+                        bool runFile = GetConfigVal("File", "CrRunFile", config);
+                        //Run dropped/created file if runFile == 1
+                        if (runFile && ("exe" == fileType[i] || "winexe" == fileType[i]))
+                        {
+                            try
+                            {
+                                ProcessStartInfo runExe = new ProcessStartInfo();
+                                runExe.FileName = filePathName;
+                                try
+                                {
+                                    runExe.WindowStyle = WindowStyle(WinStyle[i]);
+                                }
+                                catch
+                                {
+                                    runExe.WindowStyle = ProcessWindowStyle.Normal;
+                                }
+                                Process.Start(runExe);
+                                Console.WriteLine("[+] " + filePathName + " started.");
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("[-] Error: " + e.Message + ".");
+                            }
+                        }
+                        else if (runFile && "library" == fileType[i])
+                        {
+                            var DLL = Assembly.LoadFile(Path.GetFullPath(filePathName));
+                            Console.WriteLine("[+] " + filePathName + " loaded.");
+                            //foreach (Type type in DLL.GetExportedTypes())
+                            //{
+                            //    var c = Activator.CreateInstance(type);
+                            //    type.InvokeMember("Output", BindingFlags.InvokeMethod, null, c, new object[] { @"Hello" });
+                            //}
                         }
                     }
                     else
                     {
-                        Console.WriteLine("[+] " + fileName[i] + " created successfully!");
-                    }
-
-                    bool runFile = GetConfigVal("File", "CrRunFile", config);                        
-                    //Run dropped/created file if runFile == 1
-                    if (runFile && ("exe" == fileType[i] || "winexe" == fileType[i]))
-                    {
                         try
                         {
-                            ProcessStartInfo runExe = new ProcessStartInfo();
-                            runExe.FileName = fileName[i];
-                            try
-                            {
-                                runExe.WindowStyle = WindowStyle(WinStyle[i]);
-                            }
-                            catch
-                            {
-                                runExe.WindowStyle = ProcessWindowStyle.Normal;
-                            }
-                            Process.Start(runExe);
-                            Console.WriteLine("[+] " + fileName + " started.");
+                            File.Create(filePathName);
+                            Console.WriteLine("[+] " + filePathName + " created.");
                         }
-                        catch(Exception e)
+                        catch (Exception e)
                         {
                             Console.WriteLine("[-] Error: " + e.Message + ".");
                         }
-                    }
-                    else if (runFile && "library" == fileType[i])
-                    {
-                        var DLL = Assembly.LoadFile(Path.GetFullPath(fileName[i]));
-                        Console.WriteLine("[+] " + fileName[i] +  " loaded.");
-                        //foreach (Type type in DLL.GetExportedTypes())
-                        //{
-                        //    var c = Activator.CreateInstance(type);
-                        //    type.InvokeMember("Output", BindingFlags.InvokeMethod, null, c, new object[] { @"Hello" });
-                        //}
                     }
                 }
             }
@@ -518,6 +550,39 @@ namespace Mimic
             int.TryParse(config.IniReadValue(section, key), out val);
             return Convert.ToBoolean(val);
 
+        }
+        private static string changeToken(string str)
+        {
+            string allappdata = @"C:\Documents and Settings\All Users\Application Data",
+                   allprograms = @"C:\Documents and Settings\All Users\Start Menu\Programs",
+                   rootdir = @"C:", programdir = @"C:\Program Files", programdirx86 = @"C:\Program Files (x86)",
+                   systemdir = @"C:\Windows\System32", systemdirx86 = @"C:\Windows\SysWOW64",
+                   regrun = @"Software\Microsoft\Windows\CurrentVersion\Run",
+                   regrunx86 = @"Software\Wow6342Node\Microsoft\Windows\CurrentVersion\Run",
+                   regmain = @"Software\Microsoft\Internet Explorer\Main",
+                   regmainx86 = @"Software\Wow6432Node\Microsoft\Internet Explorer\Main",
+                   regexplorer = @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer",
+                   regexplorerx86 = @"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Policies\Explorer",
+                   tempdir = @"C:\Windows\Temp", windir = @"C:\Windows", userprofile = @"C:\Users",
+                   myappdata = @"C:\Users\" + Environment.UserName + @"\appdata\Roaming",
+                   mytemp = @"C:\Users" + Environment.UserName + @"\AppData\Local\Temp",
+                   mystartup = @"C:\Users" + Environment.UserName + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
+
+            if (Environment.OSVersion.Platform.ToString() == "Win32NT" && Environment.OSVersion.Version.Major.ToString() == "5" && Environment.OSVersion.Version.Minor.ToString() == "1")
+            {
+                userprofile = @"C:\Documents and Settings";
+                myappdata = @"C:\Documents and Settings" + Environment.UserName + @"\Application Data";
+                mytemp = @"C:\Documents and Settings" + Environment.UserName + @"\Local Settings\Temp";
+                mystartup = @"C:\Documents and Settings" + Environment.UserName + @"Start Menu\Programs\Startup";
+            }
+           
+            return str.Replace("$allappdata$", allappdata).Replace("$allprograms$", allprograms).Replace("$rootdir$", rootdir)
+                .Replace("$programdir$", programdir).Replace("$programdirx86$", programdirx86).Replace("$systemdir$", systemdir)
+                .Replace("$systemdir$", systemdir).Replace("$systemdirx86$", systemdirx86).Replace("$regrun$", regrun)
+                .Replace("$regrunx86$", regrunx86).Replace("$regmain$", regmain).Replace("$regmainx86$", regmainx86)
+                .Replace("$regexplorer$", regexplorer).Replace("$regexplorerx86$", regexplorerx86).Replace("$tempdir$", tempdir)
+                .Replace("$windir$", windir).Replace("$userprofile$", userprofile).Replace("$myappdata$", myappdata)
+                .Replace("$mytemp$", mytemp).Replace("$mystartup$", mystartup);
         }
     }
 }
