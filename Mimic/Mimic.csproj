@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="API.cs" />
     <Compile Include="Service.cs" />
     <Compile Include="IniFile.cs" />
     <Compile Include="Program.cs" />

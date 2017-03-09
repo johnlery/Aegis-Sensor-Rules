@@ -17,10 +17,10 @@ namespace Mimic
     class Program
     {
         static void Main(string[] args)
-        {
+        {            
             string curDir = Directory.GetCurrentDirectory();
             IniFile config = new IniFile(curDir + "\\config.ini");
-
+            
             WriteRegistry(config);           
             CreateFile( config);          
             WriteFile(config);            
@@ -31,12 +31,66 @@ namespace Mimic
             CreateMutex(config);
             CreateService(config);
             CreateProcWCmdline(config);
+            CreateProcess(config);
+            ZwWriteVirtualMemory(config);
+
             Console.WriteLine("\nPress ENTER to exit.");
             Console.ReadLine();
 
             
         }
+        private static void ZwWriteVirtualMemory(IniFile config)
+        {
+            bool isWriteVM = GetConfigVal("API", "isWriteVirtualMemory", config);
+            string[] targetProc = config.IniReadValue("API", "targetProcess").Split(';');
+            if (isWriteVM)
+            {
+                Console.WriteLine("======= Write Virtual Memory =======");
+                for (int i = 0; i < targetProc.Length; i++)
+                {                  
+                    Process[] hProcess = Process.GetProcessesByName(targetProc[i]);
+                    try
+                    {
+                        API.OpenProcess(0x1F0FFF, false, hProcess[0].Id);
+                        byte[] buffer = Encoding.Unicode.GetBytes("John Pogi\0");
+                        int byteswritten = 0;
+                        if (API.WriteProcessMemory((int)hProcess[0].Handle, hProcess[0].MainModule.EntryPointAddress.ToInt32(), buffer, buffer.Length, ref byteswritten))
+                        {
+                            Console.WriteLine("[+] " + hProcess[0].MainModule.FileName + " written successfully.");
+                        }
+                    
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("[-] Error: " + e.Message);
+                    }
+                }
+            }
+        }
+        private static void CreateProcess(IniFile config)
+        {
+            bool CreateProc = GetConfigVal("Process", "isCreateProcess", config);
+            string[] fileNames = config.IniReadValue("Process", "CPFileName").Split(';');
 
+            if (CreateProc)
+            {
+                Console.WriteLine("======= Create Process =======");
+                for (int i = 0; i < fileNames.Length; i++)
+                {
+                    try
+                    {
+                        ProcessStartInfo procInfo = new ProcessStartInfo();
+                        procInfo.FileName = changeToken(fileNames[i]);
+                        Process.Start(procInfo);
+                        Console.WriteLine("[+] " + procInfo.FileName + " started.");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("[-] Error: " + e.Message + ".");
+                    }
+                }
+            }            
+        }
         private static void CreateMutex(IniFile config)
         {            
             bool CreateMut = GetConfigVal("API", "CreateMutex", config);
@@ -229,18 +283,19 @@ namespace Mimic
         }
         private static void CreateFile(IniFile config)
         {
-            string exeTest = @"namespace DLL
-            {
-                using System;
+            string exeTest = @"using System;
 
-                public class Class1
-                {
-                    public void Output(string s)
-                    {
-                        Console.WriteLine(s);
-                    }
-                }
-            }";
+namespace Test
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine(""Gwapo ko!"");
+            Console.ReadLine();
+        }
+    }
+}";
             bool CreateFile = GetConfigVal("File", "isCreateFile", config);
             string[] fileName = config.IniReadValue("File", "CrFileName").Split(';'),
                      WinStyle = config.IniReadValue("File", "CrFileWindowStyle").Split(';'),
@@ -314,7 +369,7 @@ namespace Mimic
                     {
                         try
                         {
-                            File.Create(filePathName);
+                            File.Create(filePathName).Close();
                             Console.WriteLine("[+] " + filePathName + " created.");
                         }
                         catch (Exception e)
@@ -565,15 +620,15 @@ namespace Mimic
                    regexplorerx86 = @"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Policies\Explorer",
                    tempdir = @"C:\Windows\Temp", windir = @"C:\Windows", userprofile = @"C:\Users",
                    myappdata = @"C:\Users\" + Environment.UserName + @"\appdata\Roaming",
-                   mytemp = @"C:\Users" + Environment.UserName + @"\AppData\Local\Temp",
-                   mystartup = @"C:\Users" + Environment.UserName + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
+                   mytemp = @"C:\Users\" + Environment.UserName + @"\AppData\Local\Temp",
+                   mystartup = @"C:\Users\" + Environment.UserName + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
 
             if (Environment.OSVersion.Platform.ToString() == "Win32NT" && Environment.OSVersion.Version.Major.ToString() == "5" && Environment.OSVersion.Version.Minor.ToString() == "1")
             {
                 userprofile = @"C:\Documents and Settings";
-                myappdata = @"C:\Documents and Settings" + Environment.UserName + @"\Application Data";
-                mytemp = @"C:\Documents and Settings" + Environment.UserName + @"\Local Settings\Temp";
-                mystartup = @"C:\Documents and Settings" + Environment.UserName + @"Start Menu\Programs\Startup";
+                myappdata = @"C:\Documents and Settings\" + Environment.UserName + @"\Application Data";
+                mytemp = @"C:\Documents and Settings\" + Environment.UserName + @"\Local Settings\Temp";
+                mystartup = @"C:\Documents and Settings\" + Environment.UserName + @"Start Menu\Programs\Startup";
             }
            
             return str.Replace("$allappdata$", allappdata).Replace("$allprograms$", allprograms).Replace("$rootdir$", rootdir)

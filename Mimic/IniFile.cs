@@ -16,7 +16,6 @@ public class IniFile
     private static extern int GetPrivateProfileString(string section,
              string key, string def, StringBuilder retVal,
         int size, string filePath);
-
     /// <summary>
     /// INIFile Constructor.
     /// </summary>
