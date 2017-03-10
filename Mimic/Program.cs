@@ -261,11 +261,8 @@ namespace Mimic
                 for (int i = 0; i < fileName.Length; i++)
                 {
                     string pathFileName = changeToken(fileName[i]);
-                    //FileStream file = File.Open(fileName[i], FileMode.Open, FileAccess.ReadWrite);
-                    //Console.WriteLine(file.Read();
                     try
-                    {
-                                              
+                    {                                              
                         using (var file = new FileStream(pathFileName, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
                         {
                             //Console.WriteLine(fileName[i]);
