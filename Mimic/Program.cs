@@ -393,7 +393,7 @@ namespace Test
         private static void DeleteRegistryVal(IniFile config)
         {            
             bool delRegVal = GetConfigVal("Registry", "isDeleteRegVal", config);
-            string[] RegNode = config.IniReadValue("Registry", "DelRegKey").Split(';'),
+            string[] RegNode = config.IniReadValue("Registry", "DelRegNode").Split(';'),
                 RegKey = config.IniReadValue("Registry", "DelRegKey").Split(';'),
                 RegVal = config.IniReadValue("Registry", "DelRegVal").Split(';');
 
