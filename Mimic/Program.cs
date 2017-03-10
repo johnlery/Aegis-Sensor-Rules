@@ -265,8 +265,7 @@ namespace Mimic
                     //Console.WriteLine(file.Read();
                     try
                     {
-                        Console.WriteLine(pathFileName);
-                        
+                                              
                         using (var file = new FileStream(pathFileName, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
                         {
                             //Console.WriteLine(fileName[i]);
