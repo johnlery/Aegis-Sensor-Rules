@@ -32,6 +32,15 @@ public class API
     [DllImport("kernel32.dll")]
     public static extern bool WriteProcessMemory(int hProcess, int lpBaseAddress, byte[] lpBuffer, 
                                          int nSize, ref int lpNumberOfBytesWritten);
-
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr LoadLibrary(string DLLName);
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes,
+                  uint dwStackSize, IntPtr lpStartAddress, // raw Pointer into remote process
+                  IntPtr lpParameter, uint dwCreationFlags, out uint lpThreadId);
+    [DllImport("kernel32.dll")]
+    public static extern bool TerminateThread(IntPtr hThread, uint dwExitCode);
  
 }

