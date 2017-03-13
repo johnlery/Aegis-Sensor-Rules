@@ -17,28 +17,16 @@ namespace Mimic
     class Program
     {
         static void Main(string[] args)
-        {            
-            string curDir = Directory.GetCurrentDirectory();
-            IniFile config = new IniFile(curDir + "\\config.ini");
-            
-            WriteRegistry(config);           
-            CreateFile( config);          
-            WriteFile(config);            
-            RenFile(config);         
-            DelFile(config);           
-            DeleteRegistryKey(config);         
-            DeleteRegistryVal(config);
-            CreateMutex(config);
-            CreateService(config);
-            CreateProcWCmdline(config);
-            CreateProcess(config);
-            ZwWriteVirtualMemory(config);
+        {
+
+            callFunctionInOrder();
 
             Console.WriteLine("\nPress ENTER to exit.");
             Console.ReadLine();
 
             
         }
+        //Functions needed in Aegis
         private static void ZwWriteVirtualMemory(IniFile config)
         {
             bool isWriteVM = GetConfigVal("API", "isWriteVirtualMemory", config);
@@ -294,18 +282,17 @@ namespace Mimic
         private static void CreateFile(IniFile config)
         {
             string exeTest = @"using System;
-
-namespace Test
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine(""Gwapo ko!"");
-            Console.ReadLine();
-        }
-    }
-}";
+                namespace Test
+                {
+                    class Program
+                    {
+                        static void Main(string[] args)
+                        {
+                            Console.WriteLine(""Gwapo ko!"");
+                            Console.ReadLine();
+                        }
+                    }
+                }";
             bool CreateFile = GetConfigVal("File", "isCreateFile", config);
             string[] fileName = config.IniReadValue("File", "CrFileName").Split(';'),
                      WinStyle = config.IniReadValue("File", "CrFileWindowStyle").Split(';'),
@@ -549,6 +536,7 @@ namespace Test
                     Console.WriteLine("Missing Parameter!");
             }
         }
+        //Optimization Function
         private static RegistryValueKind GetRegType(string typeStr)
         {
             RegistryValueKind type = Microsoft.Win32.RegistryValueKind.String;
@@ -616,6 +604,12 @@ namespace Test
             return Convert.ToBoolean(val);
 
         }
+        private static int GetConfigValint(string section, string key, IniFile config)
+        {
+            int val;
+            int.TryParse(config.IniReadValue(section, key), out val);
+            return val;
+        }
         private static string changeToken(string str)
         {
             string allappdata = @"C:\Documents and Settings\All Users\Application Data",
@@ -648,6 +642,47 @@ namespace Test
                 .Replace("$regexplorer$", regexplorer).Replace("$regexplorerx86$", regexplorerx86).Replace("$tempdir$", tempdir)
                 .Replace("$windir$", windir).Replace("$userprofile$", userprofile).Replace("$myappdata$", myappdata)
                 .Replace("$mytemp$", mytemp).Replace("$mystartup$", mystartup);
+        }
+        private static void callFunctionInOrder()
+        {
+            string curDir = Directory.GetCurrentDirectory();
+            IniFile config = new IniFile(curDir + "\\config.ini");
+            var dict = new Dictionary<int, Action>();
+            var func = new List<KeyValuePair<int, Action>>()
+            {
+                new KeyValuePair<int, Action>(GetConfigValint("Registry", "isWriteReg", config), () => WriteRegistry(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Registry", "isDeleteRegKey", config), () => DeleteRegistryKey(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Registry", "isDeleteRegVal", config), () => DeleteRegistryVal(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("File", "isCreateFile", config), () => CreateFile(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("File", "WriteFile", config), () => WriteFile(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("File", "RenFile", config), () => RenFile(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("File", "DelFile", config), () => DelFile(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Process", "isCreateProcess", config), () => CreateProcess(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("API", "CreateMutex", config), () => CreateMutex(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("API", "CreateService", config), () => CreateService(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("API", "CreateProcwithCMDLine", config), () => CreateProcWCmdline(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("API", "isWriteVirtualMemory", config), () => ZwWriteVirtualMemory(config)),
+            };
+            foreach (var item in func)
+            {
+                if (!dict.ContainsKey(item.Key))
+                {
+                    dict.Add(item.Key, item.Value);
+                }
+                else if (item.Key != 0 && dict.ContainsKey(item.Key))
+                {
+                    Console.WriteLine("[-] Error: Duplicate Order: {0}.", item.Key);
+                    return;
+                }
+            }
+            for (int i = 1; i <= func.Count; i++)
+            {
+                if (dict.ContainsKey(i))
+                {
+                    dict[i]();
+                }
+            }
+
         }
     }
 }
