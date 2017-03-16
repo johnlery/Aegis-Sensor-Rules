@@ -18,13 +18,9 @@ namespace Mimic
     {
         static void Main(string[] args)
         {
-
             callFunctionInOrder();
-
             Console.WriteLine("\nPress ENTER to exit.");
-            Console.ReadLine();
-
-            
+            Console.ReadLine();            
         }
         //Functions needed in Aegis
         private static void ZwWriteVirtualMemory(IniFile config)
@@ -539,63 +535,63 @@ namespace Mimic
         //Optimization Function
         private static RegistryValueKind GetRegType(string typeStr)
         {
-            RegistryValueKind type = Microsoft.Win32.RegistryValueKind.String;
-            if (typeStr == "REG_MULTI_SZ")
+            
+            RegistryValueKind[] type = { Microsoft.Win32.RegistryValueKind.String,
+                                        Microsoft.Win32.RegistryValueKind.MultiString,
+                                        Microsoft.Win32.RegistryValueKind.DWord
+                                    };
+            string[] strType = { "REG_SZ", "REG_MULTI_SZ", "REG_DWORD" };
+            RegistryValueKind ConvertedType = type[0];
+            try
             {
-                type = Microsoft.Win32.RegistryValueKind.MultiString;
+                ConvertedType = type[Array.IndexOf(strType, typeStr)];
             }
-            else if (typeStr == "REG_DWORD")
+            catch
             {
-                type = Microsoft.Win32.RegistryValueKind.DWord;
+                Console.WriteLine("[-] Error: Cannot convert registry value kind: {0}", typeStr);
+                Console.WriteLine("\nPress ENTER to exit.");
+                Console.ReadLine();
+                Environment.Exit(Environment.ExitCode);
             }
-            else if (typeStr == "REG_SZ")
-            {
-                type = Microsoft.Win32.RegistryValueKind.String;
-            }
-            return type;
-
+            return ConvertedType;
         }
         private static RegistryKey GetRegNode(string NodeStr) 
         {
-            RegistryKey node = Registry.LocalMachine;
-
-            if (NodeStr == "HKCU") 
+            RegistryKey[] node = { Registry.LocalMachine, Registry.CurrentUser, Registry.ClassesRoot,
+                                   Registry.CurrentConfig, Registry.Users};
+            string[] strNode = { "HKLM", "HKCU", "HKCR", "HKCC", "HKU" };
+            RegistryKey ConvertedNode = node[0];
+            try
             {
-                node = Registry.CurrentUser;
+                ConvertedNode = node[Array.IndexOf(strNode, NodeStr)];
             }
-            else if (NodeStr == "HKCR")
+            catch
             {
-                node = Registry.ClassesRoot;
+                Console.WriteLine("[-] Error: Cannot convert registry node: {0}", NodeStr);
+                Console.WriteLine("\nPress ENTER to exit.");
+                Console.ReadLine();
+                Environment.Exit(Environment.ExitCode);
             }
-            else if (NodeStr == "HKCC")
-            {
-                node = Registry.CurrentConfig;
-            }
-            else if (NodeStr == "HKU")
-            {
-                node = Registry.Users;
-            }
-
-            return node;
+            return ConvertedNode;
         }
         private static ProcessWindowStyle WindowStyle(string strStyle)
         {
-            ProcessWindowStyle style = ProcessWindowStyle.Normal;
-
-            if (strStyle == "SW_HIDE")
+            ProcessWindowStyle[] style = { ProcessWindowStyle.Normal, ProcessWindowStyle.Hidden,
+                                           ProcessWindowStyle.Maximized, ProcessWindowStyle.Minimized};
+            string[] styleStr = { "SW_NORMAL", "SW_HIDE", "SW_MAXIMIZE", "SW_MINIMIZE" };
+            ProcessWindowStyle ConvertedStyle = style[0];
+            try
             {
-                return ProcessWindowStyle.Hidden;
+                ConvertedStyle = style[Array.IndexOf(styleStr, strStyle)];
             }
-            else if (strStyle == "SW_MAXIMIZE")
+            catch
             {
-                return ProcessWindowStyle.Maximized;
+                Console.WriteLine("[-] Error: Cannot convert process windows style: {0}", strStyle);
+                Console.WriteLine("\nPress ENTER to exit.");
+                Console.ReadLine();
+                Environment.Exit(Environment.ExitCode);
             }
-            else if (strStyle == "SW_MINIMIZE")
-            {
-                return ProcessWindowStyle.Minimized;
-            }
- 
-            return style;
+            return ConvertedStyle;
         }
         private static bool GetConfigVal(string section, string key, IniFile config)
         {
@@ -634,14 +630,17 @@ namespace Mimic
                 mytemp = @"C:\Documents and Settings\" + Environment.UserName + @"\Local Settings\Temp";
                 mystartup = @"C:\Documents and Settings\" + Environment.UserName + @"Start Menu\Programs\Startup";
             }
-           
-            return str.Replace("$allappdata$", allappdata).Replace("$allprograms$", allprograms).Replace("$rootdir$", rootdir)
-                .Replace("$programdir$", programdir).Replace("$programdirx86$", programdirx86).Replace("$systemdir$", systemdir)
-                .Replace("$systemdir$", systemdir).Replace("$systemdirx86$", systemdirx86).Replace("$regrun$", regrun)
-                .Replace("$regrunx86$", regrunx86).Replace("$regmain$", regmain).Replace("$regmainx86$", regmainx86)
-                .Replace("$regexplorer$", regexplorer).Replace("$regexplorerx86$", regexplorerx86).Replace("$tempdir$", tempdir)
-                .Replace("$windir$", windir).Replace("$userprofile$", userprofile).Replace("$myappdata$", myappdata)
-                .Replace("$mytemp$", mytemp).Replace("$mystartup$", mystartup);
+
+            string[] strToken = { "$allappdata$", "$allprograms$", "$rootdir$", "$programdir$", "$programdirx86$", 
+                                  "$systemdir$", "$systemdir$", "$systemdirx86$", "$regrun$", "$regrunx86$", "$regmain$", 
+                                  "$regmainx86$", "$regexplorer$", "$regexplorerx86$", "$tempdir$", "$windir$", "$userprofile$", 
+                                    "$mytemp$", "$mystartup$",};
+            string[] varToken = { allappdata, allprograms, rootdir, programdir, programdirx86, systemdir, systemdirx86, regrun, 
+                                  regrunx86, regmain, regmainx86, regexplorer, regexplorerx86, tempdir, windir, userprofile, myappdata,
+                                  mytemp, mystartup};
+            for (int x = 0; x < strToken.Length; x++)
+                str = str.Replace(strToken[x], varToken[x]);
+            return str;
         }
         private static void callFunctionInOrder()
         {
