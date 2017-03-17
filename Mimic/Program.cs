@@ -129,7 +129,7 @@ namespace Mimic
                     {
                         if (!ServiceInstaller.ServiceIsInstalled(ServiceName[i]))
                         {
-                            ServiceInstaller.InstallAndStart(ServiceName[i], ServiceDispName[i], path, false);
+                            ServiceInstaller.InstallAndStart(ServiceName[i], ServiceDispName[i], path, true);
                             Console.WriteLine("[+] Service Installed.");
                         }
                         else
@@ -238,7 +238,9 @@ namespace Mimic
             string[] fileName = config.IniReadValue("File", "WrFileName").Split(';');
             bool OpenFile = GetConfigVal("File", "WriteFile", config);
 
-            byte[] buff = Encoding.ASCII.GetBytes("John");
+            byte[] buff = Encoding.ASCII.GetBytes(@"MIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMIC
+                                                    MIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMIC
+                                                    MIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMICMIMIC");
             if (OpenFile && fileName != null)
             {
                 Console.WriteLine("======= Write To File =======");
@@ -294,11 +296,13 @@ namespace Mimic
                      WinStyle = config.IniReadValue("File", "CrFileWindowStyle").Split(';'),
                      fileType = config.IniReadValue("File", "FileType").Split(';');
             //Check if CreateFile is Enabled and File name is not empty
-            if (CreateFile && fileName != null)
+            if (fileName != null && fileName.Length == fileType.Length && fileName.Length == WinStyle.Length)
             {
                 Console.WriteLine("======= Create File =======");
                 for (int i = 0; i < fileName.Length; i++)
                 {
+                    if (!Directory.Exists(@".\temp"))
+                        Directory.CreateDirectory(@".\temp");
                     string filePathName = changeToken(fileName[i]);
                     if ("library" == fileType[i] || "exe" == fileType[i] || "winexe" == fileType[i])
                     {
@@ -306,7 +310,7 @@ namespace Mimic
 
                         System.CodeDom.Compiler.CompilerParameters p = new CompilerParameters();
                         p.GenerateExecutable = true;
-                        p.OutputAssembly = filePathName;
+                        p.OutputAssembly = @".\temp\temp";
                         p.CompilerOptions = "/t:" + fileType[i];
 
                         CompilerResults results = codeProvider.CompileAssemblyFromSource(p, exeTest);
@@ -320,6 +324,8 @@ namespace Mimic
                         }
                         else
                         {
+                            File.Copy(p.OutputAssembly, filePathName,true);
+                            Directory.Delete(@".\temp", true);
                             Console.WriteLine("[+] " + filePathName + " created successfully!");
                         }
 
@@ -370,7 +376,12 @@ namespace Mimic
                             Console.WriteLine("[-] Error: " + e.Message + ".");
                         }
                     }
-                }
+                    Thread.Sleep(3000);
+                }                
+            }
+            else 
+            {
+                Console.WriteLine("[-] Error: Inconsistent number of filename, filetype and window style");
             }
         }
         private static void DeleteRegistryVal(IniFile config)
