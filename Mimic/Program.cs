@@ -130,7 +130,7 @@ namespace Mimic
         }
         private static void CreateProcess(IniFile config)
         {
-            bool CreateProc = GetConfigVal("Process", "isCreateProcess", config);
+            bool CreateProc = GetConfigVal("Process", "CreateProcess", config);
             string[] fileNames = config.IniReadValue("Process", "CPFileName").Split(';');
 
             if (CreateProc)
@@ -751,7 +751,7 @@ namespace Mimic
             string[] strToken = { "$allappdata$", "$allprograms$", "$rootdir$", "$programdir$", "$programdirx86$", 
                                   "$systemdir$", "$systemdir$", "$systemdirx86$", "$regrun$", "$regrunx86$", "$regmain$", 
                                   "$regmainx86$", "$regexplorer$", "$regexplorerx86$", "$tempdir$", "$windir$", "$userprofile$", 
-                                    "$mytemp$", "$mystartup$",};
+                                    "$mytemp$", "$mystartup$"};
             string[] varToken = { allappdata, allprograms, rootdir, programdir, programdirx86, systemdir, systemdirx86, regrun, 
                                   regrunx86, regmain, regmainx86, regexplorer, regexplorerx86, tempdir, windir, userprofile, myappdata,
                                   mytemp, mystartup};
@@ -775,7 +775,7 @@ namespace Mimic
                 new KeyValuePair<int, Action>(GetConfigValint("File", "WriteFile", config), () => WriteFile(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("File", "RenFile", config), () => RenFile(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("File", "DelFile", config), () => DelFile(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("Process", "isCreateProcess", config), () => CreateProcess(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Process", "CreateProcess", config), () => CreateProcess(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateMutex", config), () => CreateMutex(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateService", config), () => CreateService(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateProcwithCMDLine", config), () => CreateProcWCmdline(config)),

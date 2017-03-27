@@ -32,6 +32,12 @@ public class API
     [DllImport("kernel32.dll")]
     public static extern bool WriteProcessMemory(int hProcess, int lpBaseAddress, byte[] lpBuffer, 
                                          int nSize, ref int lpNumberOfBytesWritten);
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="hModule"></param>
+    /// <param name="procName"></param>
+    /// <returns></returns>
     [DllImport("kernel32.dll")]
     public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
     [DllImport("kernel32.dll")]
