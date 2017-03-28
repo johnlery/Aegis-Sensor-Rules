@@ -18,7 +18,7 @@ namespace Mimic
     class Program
     {
         static void Main(string[] args)
-        {       
+        {            
             callFunctionInOrder();
             Console.WriteLine("\nPress ENTER to exit.");
             Console.ReadLine();            
@@ -142,6 +142,7 @@ namespace Mimic
                     {
                         ProcessStartInfo procInfo = new ProcessStartInfo();
                         procInfo.FileName = changeToken(fileNames[i]);
+                        procInfo.UseShellExecute = true;
                         Process.Start(procInfo);
                         Console.WriteLine("[+] " + procInfo.FileName + " started.");
                     }
@@ -170,7 +171,7 @@ namespace Mimic
                     }
                     else
                     {
-                        Console.WriteLine("Press Enter to Dispose Mutex: " + MutexName[i] + ".");
+                        Console.WriteLine("[+] {0} created.",MutexName[i]);
                         //Console.ReadLine();
                         //mutex.ReleaseMutex();
                     }
@@ -375,6 +376,8 @@ namespace Mimic
                             ShowWindow(handle, SW_HIDE);
                             string fileName = String.Concat(Process.GetCurrentProcess().ProcessName, "".exe""),
                                             filePath = Path.Combine(Environment.CurrentDirectory, fileName);
+                            Stopwatch watch = new Stopwatch();
+                            watch.Start();
                             while (true)
                             {
                                 try
@@ -382,11 +385,20 @@ namespace Mimic
                                     DriveInfo[] myDrives = DriveInfo.GetDrives();
                                     foreach (DriveInfo drive in myDrives)
                                     {
-                                        if(!File.Exists(Path.Combine(drive.Name, fileName)))
+                                        if(drive.Name != ""C:\\"")
                                         {
-                                            File.Copy(filePath, Path.Combine(drive.Name, fileName), true);
+                                            if(!File.Exists(Path.Combine(drive.Name, fileName)))
+                                            {
+                                                File.Copy(filePath, Path.Combine(drive.Name, fileName), true);
+                                            }
                                         }
                                     }
+                                    watch.Stop();
+                                    if(""5000"" == watch.ElapsedMilliseconds.ToString())
+                                    {
+                                       break;
+                                    }
+                                    watch.Start();
                                 }
                                 catch (Exception)
                                 {
@@ -780,7 +792,7 @@ namespace Mimic
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateService", config), () => CreateService(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateProcwithCMDLine", config), () => CreateProcWCmdline(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "WriteVirtualMemory", config), () => ZwWriteVirtualMemory(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("API", "TerminateProcess", config), () => TerminateProcess(config))
+                new KeyValuePair<int, Action>(GetConfigValint("Process", "TerminateProcess", config), () => TerminateProcess(config))
             };
             foreach (var item in func)
             {
