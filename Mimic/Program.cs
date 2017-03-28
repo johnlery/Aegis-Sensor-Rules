@@ -58,7 +58,7 @@ namespace Mimic
         private static void MimicBehaviour(IniFile config)
         {
             Console.WriteLine("======= Mimic Behaviour =======");
-            if (GetConfigVal("Mimic", "SelfPropagate", config))
+            if (GetConfigVal("Jobset", "SelfPropagate", config))
             {               
                 string fileName = String.Concat(Process.GetCurrentProcess().ProcessName, ".exe"),
                     filePath = Path.Combine(Environment.CurrentDirectory, fileName);
@@ -70,7 +70,7 @@ namespace Mimic
                     Console.WriteLine("[+] Self Propagate: " + Path.Combine(changeToken(dest), fileName));
                 }
             }
-            if (GetConfigVal("Mimic", "SelfClean", config))
+            if (GetConfigVal("Jobset", "SelfClean", config))
             {
                 string fileName = String.Concat(Process.GetCurrentProcess().ProcessName, ".exe"),
                                             filePath = Path.Combine(Environment.CurrentDirectory, fileName);
