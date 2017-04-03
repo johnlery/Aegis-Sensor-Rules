@@ -18,12 +18,119 @@ namespace Mimic
     class Program
     {
         static void Main(string[] args)
-        {            
+        {
             callFunctionInOrder();
             Console.WriteLine("\nPress ENTER to exit.");
             Console.ReadLine();            
         }
         #region Functions needed in Aegis
+        private static void WriteVirtualMemory(IniFile config)
+        {
+            string[] targetProc = config.IniReadValue("API", "targetProcess").Split(';'),
+                    isCreateThread = config.IniReadValue("API", "CreateThread").Split(';');
+
+            string dllName = "Injection32.dll";
+            if (System.Environment.Is64BitOperatingSystem)
+            {
+                dllName = "Injection64.dll"; 
+            }
+            dllName = Path.Combine(Directory.GetCurrentDirectory(), dllName);
+            if (targetProc.Length != isCreateThread.Length)
+            {
+                Console.WriteLine("[-] Target Process length not the same with isCreateThread.");
+                return;
+            }
+            int i = 0;
+            foreach (string proc in targetProc)
+            {                
+                try
+                {
+                    Process[] hProcess = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(changeToken(proc)));
+                    if (hProcess.Length != 0)
+                    {
+                        foreach (Process hProc in hProcess)
+                        {
+                            if (String.Equals(hProc.MainModule.FileName, changeToken(proc), StringComparison.OrdinalIgnoreCase))
+                            {
+                                IntPtr hOpenProc = API.OpenProcess(0x1F0FFF,
+                                    false,hProc.Id);
+                                IntPtr loadLibAddr = API.GetProcAddress(API.GetModuleHandle("kernel32.dll"), "LoadLibraryA");                                
+                                IntPtr allocMemAddr = API.VirtualAllocEx(hOpenProc, IntPtr.Zero,
+                                        (uint)((dllName.Length + 1) * Marshal.SizeOf(typeof(char))), 
+                                        API.MEM_COMMIT | API.MEM_RESERVE, API.PAGE_READWRITE);
+                                
+                                UIntPtr bytesWritten;
+                                if (API.WriteProcessMemory(hOpenProc, allocMemAddr, Encoding.Default.GetBytes(dllName),
+                                    (uint)((dllName.Length + 1) * Marshal.SizeOf(typeof(char))), out bytesWritten))
+                                {
+                                    Console.WriteLine("[+] Written {0} process.", Path.GetFileName(changeToken(proc)));
+                                    if (isCreateThread[i] == "1")
+                                    {
+                                        IntPtr threadID = API.CreateRemoteThread(hOpenProc, IntPtr.Zero, 0, loadLibAddr, allocMemAddr, 0, IntPtr.Zero);
+                                        if (threadID == null)
+                                        {
+                                            Console.WriteLine("[-] Error CreateRemoteThread.");
+
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("[+] CreateRemoteThread running. {0} attached in {1}", Path.GetFileName(dllName), Path.GetFileName(changeToken(proc)));
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("[-] Error WriteProcessMemory.");
+                                }
+                            }
+                            hProc.Close();
+                        }
+                    }
+                    else
+                        {
+                            Console.WriteLine("[-] {0} process not found.", Path.GetFileNameWithoutExtension(changeToken(proc)));
+                        }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("[-] {0}.", e.Message);
+                }
+                i++;
+            }
+        }
+        private static void OpenProcess(IniFile config)
+        {
+            Console.WriteLine("======= Open Process =======");
+            string[] processName = config.IniReadValue("Process", "targetProcess").Split(';');
+            foreach (string proc in processName)
+            {
+                try
+                {
+                    Process[] hProcess = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(changeToken(proc)));
+                    if (hProcess.Length != 0)
+                    {
+                        foreach (Process hProc in hProcess)
+                        {
+                            if (String.Equals(hProc.MainModule.FileName, changeToken(proc), StringComparison.OrdinalIgnoreCase))
+                            {
+                                API.OpenProcess(0x1F0FFF, false, hProc.Id);
+                                Console.WriteLine("[+] {0} process opened.", Path.GetFileName(changeToken(proc)));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("[-] No {0} process found.", Path.GetFileName(changeToken(proc)));
+                    }
+
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("[-] {0}", e.Message);
+                }
+            }
+
+        }
         private static void TerminateProcess(IniFile config)
         {
             Console.WriteLine("======= Terminate Process =======");
@@ -91,6 +198,7 @@ namespace Mimic
                 }
             }
         }
+        /* Old Write Virtual Memory Function..
         private static void ZwWriteVirtualMemory(IniFile config)
         {
             bool isWriteVM = GetConfigVal("API", "WriteVirtualMemory", config);
@@ -118,7 +226,7 @@ namespace Mimic
                                 Console.WriteLine("[+] Thread Started. Thread ID: " + dwThreadID);
                                 API.TerminateThread(hThread, 0);
                             }
-                        }                   
+                        }                      
                     
                     }
                     catch (Exception e)
@@ -127,7 +235,7 @@ namespace Mimic
                     }
                 }
             }
-        }
+        }*/
         private static void CreateProcess(IniFile config)
         {
             bool CreateProc = GetConfigVal("Process", "CreateProcess", config);
@@ -438,7 +546,7 @@ namespace Mimic
                                 Console.WriteLine(CompErr.ErrorText);
                                 break;
                             }
-                        }
+                        }                           
                         else
                         {
                             File.Copy(p.OutputAssembly, filePathName,true);
@@ -479,6 +587,27 @@ namespace Mimic
                             //    var c = Activator.CreateInstance(type);
                             //    type.InvokeMember("Output", BindingFlags.InvokeMethod, null, c, new object[] { @"Hello" });
                             //}
+                        }
+                    }
+                    else if ("js" == fileType[i]|| "bat" == fileType[i] || "vbs" == fileType[i])
+                    {
+                        try
+                        {
+                            string[] code = config.IniReadValue("Code", fileType[i]).Split(';');
+                            StreamWriter createCodedFile = File.CreateText(filePathName);
+                            foreach (string lineCode in code)
+                            {
+                                string writeCode = lineCode;
+                                if ("js" == fileType[i])
+                                    writeCode = lineCode + ";";
+                                createCodedFile.Write(writeCode + "\n");
+                            }
+                            Console.WriteLine("[+] " + filePathName + " created.");
+                            createCodedFile.Close();
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("[-] Error: " + e.Message + ".");
                         }
                     }
                     else
@@ -777,6 +906,7 @@ namespace Mimic
         {
             string curDir = Directory.GetCurrentDirectory();
             IniFile config = new IniFile(curDir + "\\config.ini");
+            
             var dict = new Dictionary<int, Action>();
             var func = new List<KeyValuePair<int, Action>>()
             {
@@ -791,8 +921,9 @@ namespace Mimic
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateMutex", config), () => CreateMutex(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateService", config), () => CreateService(config)),
                 new KeyValuePair<int, Action>(GetConfigValint("API", "CreateProcwithCMDLine", config), () => CreateProcWCmdline(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("API", "WriteVirtualMemory", config), () => ZwWriteVirtualMemory(config)),
-                new KeyValuePair<int, Action>(GetConfigValint("Process", "TerminateProcess", config), () => TerminateProcess(config))
+                new KeyValuePair<int, Action>(GetConfigValint("API", "WriteVirtualMemory", config), () => WriteVirtualMemory(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Process", "TerminateProcess", config), () => TerminateProcess(config)),
+                new KeyValuePair<int, Action>(GetConfigValint("Process", "OpenProcess", config), () => OpenProcess(config))
             };
             foreach (var item in func)
             {
@@ -814,7 +945,7 @@ namespace Mimic
                 }
             }
             MimicBehaviour(config);
-
+             
         }
         #endregion
     }

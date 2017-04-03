@@ -3,3 +3,4 @@ c:\users\john\documents\visual studio 2010\Projects\Mimic\Mimic\bin\Debug\Mimic.
 c:\users\john\documents\visual studio 2010\Projects\Mimic\Mimic\obj\x86\Debug\Mimic.exe
 c:\users\john\documents\visual studio 2010\Projects\Mimic\Mimic\obj\x86\Debug\Mimic.pdb
 C:\Users\John\Documents\Visual Studio 2010\Projects\Mimic\Mimic\obj\x86\Debug\Mimic.csprojResolveAssemblyReference.cache
+C:\Users\John\Documents\Visual Studio 2010\Projects\Mimic\Mimic\bin\Debug\Mimic.exe.config
