@@ -31,11 +31,6 @@ namespace Mimic
                     isCreateThread = config.IniReadValue("API", "CreateThread").Split(';');
 
             string dllName = "Injection32.dll";
-            if (System.Environment.Is64BitOperatingSystem)
-            {
-                dllName = "Injection64.dll"; 
-            }
-            dllName = Path.Combine(Directory.GetCurrentDirectory(), dllName);
             if (targetProc.Length != isCreateThread.Length)
             {
                 Console.WriteLine("[-] Target Process length not the same with isCreateThread.");
