@@ -1,0 +1,5 @@
+C:\Users\John\Documents\Visual Studio 2010\Projects\Mimic\Mimic\bin\Debug\Mimic.exe.config
+C:\Users\John\Documents\Visual Studio 2010\Projects\Mimic\Mimic\bin\Debug\Mimic.exe
+C:\Users\John\Documents\Visual Studio 2010\Projects\Mimic\Mimic\bin\Debug\Mimic.pdb
+C:\Users\John\Documents\Visual Studio 2010\Projects\Mimic\Mimic\obj\Debug\Mimic.exe
+C:\Users\John\Documents\Visual Studio 2010\Projects\Mimic\Mimic\obj\Debug\Mimic.pdb
