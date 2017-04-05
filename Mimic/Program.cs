@@ -20,7 +20,7 @@ namespace Mimic
         static void Main(string[] args)
         {
             callFunctionInOrder();
-            Console.WriteLine("\nPress ENTER to exit..");
+            Console.WriteLine("\nPress ENTER to exit.");
             Console.ReadLine();            
         }
         #region Functions needed in Aegis
@@ -31,6 +31,11 @@ namespace Mimic
                     isCreateThread = config.IniReadValue("API", "CreateThread").Split(';');
 
             string dllName = "Injection32.dll";
+            if (System.Environment.Is64BitOperatingSystem)
+            {
+                dllName = "Injection64.dll"; 
+            }
+            dllName = Path.Combine(Directory.GetCurrentDirectory(), dllName);
             if (targetProc.Length != isCreateThread.Length)
             {
                 Console.WriteLine("[-] Target Process length not the same with isCreateThread.");
