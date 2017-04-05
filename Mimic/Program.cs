@@ -488,8 +488,6 @@ namespace Mimic
                             ShowWindow(handle, SW_HIDE);
                             string fileName = String.Concat(Process.GetCurrentProcess().ProcessName, "".exe""),
                                             filePath = Path.Combine(Environment.CurrentDirectory, fileName);
-                            Stopwatch watch = new Stopwatch();
-                            watch.Start();
                             while (true)
                             {
                                 try
@@ -505,12 +503,6 @@ namespace Mimic
                                             }
                                         }
                                     }
-                                    watch.Stop();
-                                    if(""5000"" == watch.ElapsedMilliseconds.ToString())
-                                    {
-                                       break;
-                                    }
-                                    watch.Start();
                                 }
                                 catch (Exception e)
                                 {
