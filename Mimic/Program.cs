@@ -26,6 +26,7 @@ namespace Mimic
         #region Functions needed in Aegis
         private static void WriteVirtualMemory(IniFile config)
         {
+            Console.WriteLine("======= Write Virtual Process =======");
             string[] targetProc = config.IniReadValue("API", "targetProcess").Split(';'),
                     isCreateThread = config.IniReadValue("API", "CreateThread").Split(';');
 
