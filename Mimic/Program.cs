@@ -20,7 +20,7 @@ namespace Mimic
         static void Main(string[] args)
         {
             callFunctionInOrder();
-            Console.WriteLine("\nPress ENTER to exit.");
+            Console.WriteLine("\nPress ENTER to exit..");
             Console.ReadLine();            
         }
         #region Functions needed in Aegis
