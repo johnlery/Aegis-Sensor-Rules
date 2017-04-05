@@ -190,7 +190,10 @@ namespace Mimic
                         CreateNoWindow = true,
                         FileName = "cmd.exe"
                     });
+                    
                     Console.WriteLine("[+] Self Destruct :P");
+                    Thread.Sleep(1000);
+                    Environment.Exit(0);
                 }
                 catch (Exception e)
                 {
